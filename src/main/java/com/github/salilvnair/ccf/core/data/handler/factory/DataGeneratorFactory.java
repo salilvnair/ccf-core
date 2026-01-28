@@ -1,10 +1,7 @@
 package com.github.salilvnair.ccf.core.data.handler.factory;
 
 import com.github.salilvnair.ccf.core.data.context.DataContext;
-import com.github.salilvnair.ccf.core.data.handler.core.ContainerDataGenerator;
-import com.github.salilvnair.ccf.core.data.handler.core.ContainerTableDataGenerator;
-import com.github.salilvnair.ccf.core.data.handler.core.SectionDataGenerator;
-import com.github.salilvnair.ccf.core.data.handler.core.TransformedContainerDataGenerator;
+import com.github.salilvnair.ccf.core.data.handler.core.*;
 import com.github.salilvnair.ccf.core.data.handler.provider.transformer.CommonTransformedContainerDataGenerator;
 import com.github.salilvnair.ccf.core.data.type.ContainerType;
 import com.github.salilvnair.ccf.core.data.type.SectionType;
@@ -37,9 +34,19 @@ public class DataGeneratorFactory {
         return containerTableDataGenerator(containerType);
     }
 
+    public ContainerTableRawDataGenerator containerTableRawDataGenerator(DataContext dataContext) {
+        ContainerType containerType = dataContext.getContainerType();
+        return containerTableRawDataGenerator(containerType);
+    }
+
     public ContainerTableDataGenerator containerTableDataGenerator(ContainerType containerType) {
         return (ContainerTableDataGenerator) applicationContext.getBean(containerType.value());
     }
+
+    public ContainerTableRawDataGenerator containerTableRawDataGenerator(ContainerType containerType) {
+        return (ContainerTableRawDataGenerator) applicationContext.getBean(containerType.value());
+    }
+
 
     public TransformedContainerDataGenerator transformedContainerDataGenerator(DataContext dataContext) {
         return (TransformedContainerDataGenerator)applicationContext.getBean(CommonTransformedContainerDataGenerator.BEAN_NAME);

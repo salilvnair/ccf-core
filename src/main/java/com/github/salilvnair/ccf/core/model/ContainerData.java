@@ -20,10 +20,12 @@ public class ContainerData {
     private String containerType;
     private PaginationInfo paginationInfo;
     private List<SectionField> data;
+    private Map<String, Object> rawData;
     private List<SectionField> tableHeaders;
     private Map<Long, Set<String>> filterValues;
     private Map<Long, FilterValue> dtFilterValues;
     private List<List<SectionField>> tableData;
+    private List<Map<String, Object>> rawTableData;
     private Integer tableRowCount;
     private ContainerMetaData metaData;
 }

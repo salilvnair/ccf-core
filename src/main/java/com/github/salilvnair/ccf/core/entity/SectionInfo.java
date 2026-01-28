@@ -31,6 +31,12 @@ public class SectionInfo {
     @Column(name = "ACTIVE")
     private String active;
 
+    @Column(name = "BEAN_NAME")
+    private String beanName;
+
+    @Column(name = "BEAN_METHOD_NAME")
+    private String beanMethodName;
+
     @Column(name = "PRODUCT")
     private String productCommaSeperatedString;
 

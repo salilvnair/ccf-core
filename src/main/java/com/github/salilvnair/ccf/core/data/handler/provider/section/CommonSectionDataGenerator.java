@@ -3,9 +3,11 @@ package com.github.salilvnair.ccf.core.data.handler.provider.section;
 import com.github.salilvnair.ccf.core.constant.InputParamsKey;
 import com.github.salilvnair.ccf.core.constant.StringConstant;
 import com.github.salilvnair.ccf.core.data.context.DataContext;
+import com.github.salilvnair.ccf.core.data.context.DataTaskContext;
 import com.github.salilvnair.ccf.core.data.exception.DataException;
 import com.github.salilvnair.ccf.core.data.handler.core.ContainerDataGenerator;
 import com.github.salilvnair.ccf.core.data.handler.core.ContainerTableDataGenerator;
+import com.github.salilvnair.ccf.core.data.handler.core.ContainerTableRawDataGenerator;
 import com.github.salilvnair.ccf.core.data.handler.core.SectionDataGenerator;
 import com.github.salilvnair.ccf.core.data.handler.factory.DataGeneratorFactory;
 import com.github.salilvnair.ccf.core.data.type.ContainerType;
@@ -55,6 +57,9 @@ public class CommonSectionDataGenerator implements SectionDataGenerator {
         dataContext.setContainerQueryInfoRepo(containerQueryInfoRepo);
         if(!CollectionUtils.isEmpty(containerInfoList)) {
             containerInfoList = filterSectionInfoIfApplicable(containerInfoList, dataContext);
+            if(!CollectionUtils.isEmpty(containerInfoList)) {
+                executeSectionDataTasks(dataContext);
+            }
             for (ContainerInfo containerInfo : containerInfoList) {
                 ContainerData containerData = new ContainerData();
                 if(containerInfo != null) {
@@ -70,14 +75,19 @@ public class CommonSectionDataGenerator implements SectionDataGenerator {
                     dataContext.setContainerQueryInfo(containerQueryInfo);
 
                     if(containerType.isTable()) {
-                        ContainerTableDataGenerator containerTableDataGenerator = dataGeneratorFactory.containerTableDataGenerator(dataContext);
-                        List<List<SectionField>> tableData = containerTableDataGenerator.generate(dataContext);
-                        List<SectionField> headers = containerTableDataGenerator.generateHeaders(dataContext, containerInfo);
-                        containerData.setTableData(tableData);
-                        containerData.setPaginationInfo(dataContext.paginationInfo(dataContext));
-                        containerData.setTableHeaders(headers);
-                        containerData.setFilterValues(containerTableDataGenerator.generateFilterValues(tableData));
-                        containerData.setDtFilterValues(containerTableDataGenerator.generateDtFilterValues(tableData));
+                        if(containerType.isRawData()) {
+                            resolveRawTableSectionData(dataContext, containerData, containerInfo);
+                        }
+                        else {
+                            ContainerTableDataGenerator containerTableDataGenerator = dataGeneratorFactory.containerTableDataGenerator(dataContext);
+                            List<List<SectionField>> tableData = containerTableDataGenerator.generate(dataContext);
+                            List<SectionField> headers = containerTableDataGenerator.generateHeaders(dataContext, containerInfo);
+                            containerData.setTableData(tableData);
+                            containerData.setPaginationInfo(dataContext.paginationInfo(dataContext));
+                            containerData.setTableHeaders(headers);
+                            containerData.setFilterValues(containerTableDataGenerator.generateFilterValues(tableData));
+                            containerData.setDtFilterValues(containerTableDataGenerator.generateDtFilterValues(tableData));
+                        }
                     }
                     else {
                         ContainerDataGenerator containerDataGenerator = dataGeneratorFactory.containerDataGenerator(dataContext);
@@ -90,6 +100,21 @@ public class CommonSectionDataGenerator implements SectionDataGenerator {
             }
         }
         return containerDataList;
+    }
+
+    private void resolveRawTableSectionData(DataContext dataContext, ContainerData containerData, ContainerInfo containerInfo) throws DataException {
+        ContainerTableRawDataGenerator containerTableDataGenerator = dataGeneratorFactory.containerTableRawDataGenerator(dataContext);
+        List<Map<String, Object>> tableData = containerTableDataGenerator.generate(dataContext);
+        containerData.setRawTableData(tableData);
+    }
+
+    private void executeSectionDataTasks(DataContext dataContext) {
+        SectionInfo sectionInfo = dataContext.getSectionInfo();
+        DataTaskContext dataTaskContext = DataTaskContext
+                                            .builder()
+                                            .dataContext(dataContext)
+                                            .build();
+        dataContext.getDataTaskExecutor().execute(sectionInfo.getBeanName(), sectionInfo.getBeanMethodName(), dataTaskContext);
     }
 
     private List<ContainerInfo> filterSectionInfoIfApplicable(List<ContainerInfo> containerInfoList, DataContext dataContext) {

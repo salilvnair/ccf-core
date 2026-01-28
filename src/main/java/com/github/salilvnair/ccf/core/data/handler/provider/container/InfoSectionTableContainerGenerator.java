@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component(value = ContainerType.Value.INFO_TABLE)
-public class InfoTableContainerGenerator extends AbstractTableContainerGenerator implements ContainerTableDataGenerator {
+public class InfoSectionTableContainerGenerator extends AbstractSectionTableContainerGenerator implements ContainerTableDataGenerator {
 
     @Override
     public List<List<SectionField>> generate(DataContext dataContext) throws DataException {

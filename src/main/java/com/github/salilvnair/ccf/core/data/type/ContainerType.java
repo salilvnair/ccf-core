@@ -1,13 +1,17 @@
 package com.github.salilvnair.ccf.core.data.type;
 
+import lombok.Getter;
+
 import java.util.Arrays;
 import java.util.Optional;
 
+@Getter
 public enum ContainerType {
     MULTI_ROW(Value.MULTI_ROW),
     FILTER_VALUE_MULTI_ROW(Value.FILTER_VALUE_MULTI_ROW),
     MULTI_INFO(Value.MULTI_INFO),
     DATA_TABLE(Value.DATA_TABLE, true),
+    RAW_DATA_TABLE(Value.RAW_DATA_TABLE, true, true),
     SIMPLE_DATA_TABLE(Value.SIMPLE_DATA_TABLE, true),
     INFO_TABLE(Value.INFO_TABLE, true),
     INFO(Value.INFO);
@@ -19,34 +23,37 @@ public enum ContainerType {
         public static final String FILTER_VALUE_MULTI_ROW = "FILTER_VALUE_MULTI_ROW";
         public static final String MULTI_INFO = "MULTI_INFO";
         public static final String DATA_TABLE = "DATA_TABLE";
+        public static final String RAW_DATA_TABLE = "RAW_DATA_TABLE";
         public static final String SIMPLE_DATA_TABLE = "SIMPLE_DATA_TABLE";
         public static final String INFO_TABLE = "INFO_TABLE";
         public static final String INFO = "INFO";
     }
 
     private final String type;
+
     private final boolean isTable;
+    private final boolean isRawData;
 
     public String value() {
         return type;
     }
 
-    public boolean isTable() {
-        return isTable;
+    ContainerType(String type, boolean isTable, boolean isRawData) {
+        this.type = type;
+        this.isTable = isTable;
+        this.isRawData = isRawData;
     }
-
-
-
-
 
     ContainerType(String type, boolean isTable) {
         this.type = type;
         this.isTable = isTable;
+        this.isRawData = false;
     }
 
     ContainerType(String type) {
         this.type = type;
         this.isTable = false;
+        this.isRawData = false;
     }
 
     public static ContainerType type(String name) {

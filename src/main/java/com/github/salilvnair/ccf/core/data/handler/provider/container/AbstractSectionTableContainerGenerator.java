@@ -4,7 +4,6 @@ import com.github.salilvnair.ccf.core.constant.StringConstant;
 import com.github.salilvnair.ccf.core.data.context.DataContext;
 import com.github.salilvnair.ccf.core.data.exception.DataException;
 import com.github.salilvnair.ccf.core.data.handler.core.ContainerTableDataGenerator;
-import com.github.salilvnair.ccf.core.data.query.decorator.main.OrderByQueryString;
 import com.github.salilvnair.ccf.core.data.query.decorator.main.WhereQueryString;
 import com.github.salilvnair.ccf.core.data.type.FieldIdType;
 import com.github.salilvnair.ccf.core.entity.ContainerFieldInfo;
@@ -22,7 +21,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
-public abstract class AbstractTableContainerGenerator extends AbstractContainerGenerator implements ContainerTableDataGenerator {
+public abstract class AbstractSectionTableContainerGenerator extends AbstractContainerGenerator implements ContainerTableDataGenerator {
 
     @Autowired
     private ContainerFieldInfoRepo containerFieldInfoRepo;
@@ -39,19 +38,6 @@ public abstract class AbstractTableContainerGenerator extends AbstractContainerG
     protected List<List<SectionField>> results(DataContext dataContext) {
         List<Map<String, Object>> dbData = fetchNonPaginatedResults(dataContext);
         return processTableData(dbData, dataContext);
-    }
-
-    protected List<Map<String, Object>> fetchNonPaginatedResults(DataContext dataContext) {
-        ContainerQueryInfo containerQueryInfo = dataContext.getContainerQueryInfo();
-        if(containerQueryInfo == null) {
-            return Collections.emptyList();
-        }
-        String queryString = containerQueryInfo.getQueryString();
-        if (queryString == null) {
-            return Collections.emptyList();
-        }
-        queryString = resolvePlaceHolders(queryString, dataContext, new WhereQueryString(new OrderByQueryString()));
-        return fetchColumKeyedResultList(dataContext, queryString, false);
     }
 
     protected List<List<SectionField>> processTableData(List<Map<String,Object>> dbData, DataContext dataContext) {
@@ -90,7 +76,7 @@ public abstract class AbstractTableContainerGenerator extends AbstractContainerG
                         }
                         SectionField sectionField = prepareSectionFieldsUsingContainerFieldInfo(dataContext, containerInfo, containerFieldInfo);
                         if(FieldIdType.CONTAINER.id() == containerFieldInfo.getFieldTypeId()) {
-                            addContainerFieldDataIntoSection(sectionField, dataContext, containerFieldInfo);
+                            addContainerFieldRawDataIntoSection(sectionField, dataContext, containerFieldInfo);
                         }
                         else {
                             sectionField.setFieldValue(rowData.get(column.toUpperCase()));

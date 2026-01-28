@@ -4,8 +4,11 @@ import com.github.salilvnair.ccf.core.constant.StringConstant;
 import com.github.salilvnair.ccf.core.dao.AbstractQueryDao;
 import com.github.salilvnair.ccf.core.data.context.DataContext;
 import com.github.salilvnair.ccf.core.data.context.DataTaskContext;
+import com.github.salilvnair.ccf.core.data.exception.DataException;
 import com.github.salilvnair.ccf.core.data.handler.core.ContainerDataGenerator;
 import com.github.salilvnair.ccf.core.data.handler.core.ContainerTableDataGenerator;
+import com.github.salilvnair.ccf.core.data.handler.core.ContainerTableRawDataGenerator;
+import com.github.salilvnair.ccf.core.data.handler.factory.DataGeneratorFactory;
 import com.github.salilvnair.ccf.core.data.query.constant.QueryParamsKey;
 import com.github.salilvnair.ccf.core.data.query.context.QueryContext;
 import com.github.salilvnair.ccf.core.data.query.decorator.base.QueryString;
@@ -18,6 +21,7 @@ import com.github.salilvnair.ccf.core.entity.ContainerFieldInfo;
 import com.github.salilvnair.ccf.core.entity.ContainerInfo;
 import com.github.salilvnair.ccf.core.entity.ContainerQueryInfo;
 import com.github.salilvnair.ccf.core.entity.PageCommonQueryInfo;
+import com.github.salilvnair.ccf.core.model.ContainerData;
 import com.github.salilvnair.ccf.core.model.SectionField;
 import com.github.salilvnair.ccf.core.repository.ContainerFieldInfoRepo;
 import com.github.salilvnair.ccf.util.common.ObjectCopier;
@@ -37,6 +41,9 @@ public abstract class AbstractContainerGenerator extends AbstractQueryDao {
 
     @Autowired
     private ContainerFieldInfoRepo containerFieldInfoRepo;
+
+    @Autowired
+    private DataGeneratorFactory dataGeneratorFactory;
 
     protected String resolvePlaceHolders(String paginatedFilterSortQueryString, DataContext dataContext, QueryString queryString) {
         QueryContext queryContext = QueryContext
@@ -110,6 +117,19 @@ public abstract class AbstractContainerGenerator extends AbstractQueryDao {
         return data;
     }
 
+    protected List<Map<String, Object>> fetchNonPaginatedResults(DataContext dataContext) {
+        ContainerQueryInfo containerQueryInfo = dataContext.getContainerQueryInfo();
+        if(containerQueryInfo == null) {
+            return Collections.emptyList();
+        }
+        String queryString = containerQueryInfo.getQueryString();
+        if (queryString == null) {
+            return Collections.emptyList();
+        }
+        queryString = resolvePlaceHolders(queryString, dataContext, new WhereQueryString(new OrderByQueryString()));
+        return fetchColumKeyedResultList(dataContext, queryString, false);
+    }
+
     protected List<SectionField> prepareSectionFields(ContainerInfo containerInfo, List<Map<String,Object>> dbData, List<ContainerFieldInfo> containerFieldInfoList, DataContext dataContext) {
         List<SectionField> data = new ArrayList<>();
         for (Map<String,Object> rowData : dbData) {
@@ -126,7 +146,7 @@ public abstract class AbstractContainerGenerator extends AbstractQueryDao {
                 }
                 SectionField sectionField = prepareSectionFieldsUsingContainerFieldInfo(dataContext, containerInfo, containerFieldInfo);
                 if(FieldIdType.CONTAINER.id() == containerFieldInfo.getFieldTypeId()) {
-                    addContainerFieldDataIntoSection(sectionField, dataContext, containerFieldInfo);
+                    addContainerFieldRawDataIntoSection(sectionField, dataContext, containerFieldInfo);
                 }
                 else {
                     sectionField.setFieldValue(rowData.get(column.toUpperCase()));
@@ -293,7 +313,7 @@ public abstract class AbstractContainerGenerator extends AbstractQueryDao {
         return dbData;
     }
 
-    protected void addContainerFieldDataIntoSection(SectionField sectionField, DataContext dataContext, ContainerFieldInfo containerFieldInfo) {
+    protected void addContainerFieldRawDataIntoSection(SectionField sectionField, DataContext dataContext, ContainerFieldInfo containerFieldInfo) {
         try {
             ContainerInfo subContainerInfo = dataContext.getContainerInfoRepo().findById(containerFieldInfo.getSubContainerId()).orElse(null);
             if(subContainerInfo != null) {
@@ -332,6 +352,48 @@ public abstract class AbstractContainerGenerator extends AbstractQueryDao {
         catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
 
+    protected void addContainerFieldRawDataIntoSection(Map<String, Object> rawData, DataContext dataContext, ContainerFieldInfo containerFieldInfo) {
+        try {
+            ContainerInfo subContainerInfo = dataContext.getContainerInfoRepo().findById(containerFieldInfo.getSubContainerId()).orElse(null);
+            if(subContainerInfo != null) {
+                ContainerInfo parentContainerInfo = ObjectCopier.clone(dataContext.getContainerInfo(), ContainerInfo.class);
+                dataContext.setContainerInfo(subContainerInfo);
+                boolean parentPagination = dataContext.paginate(parentContainerInfo.getId());
+                ContainerQueryInfo parentContainerQueryInfo = ObjectCopier.clone(dataContext.getContainerQueryInfo(), ContainerQueryInfo.class);
+                List<ContainerFieldInfo> parentContainerFieldInfoList = ObjectCopier.clone(dataContext.getCurrentContainerFieldInfoList(), ContainerFieldInfo.class) ;
+                ContainerQueryInfo subContainerQueryInfo = dataContext.getContainerQueryInfoRepo().findByContainerId(containerFieldInfo.getSubContainerId()).orElse(null);
+                dataContext.setPaginate(subContainerQueryInfo!=null && subContainerQueryInfo.getPaginationQueryString()!=null);
+                List<ContainerFieldInfo> subContainerFieldInfoList = containerFieldInfoRepo.findByContainerIdAndActiveOrderByDisplayOrder(containerFieldInfo.getSubContainerId(), StringConstant.Y);
+                dataContext.setContainerQueryInfo(subContainerQueryInfo);
+                dataContext.setCurrentContainerFieldInfoList(subContainerFieldInfoList);
+                ContainerType containerType = ContainerType.type(subContainerInfo.getContainerType());
+                if(containerType.isTable()) {
+                    if(containerType.isRawData()) {
+                        resolveRawTableSectionData(containerFieldInfo, dataContext, rawData, subContainerInfo);
+                    }
+                }
+                dataContext.setContainerQueryInfo(parentContainerQueryInfo);
+                dataContext.setCurrentContainerFieldInfoList(parentContainerFieldInfoList);
+                dataContext.setContainerInfo(parentContainerInfo);
+                dataContext.setPaginate(parentPagination, parentContainerInfo.getId());
+            }
+        }
+        catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+
+    private void resolveRawTableSectionData(ContainerFieldInfo containerFieldInfo, DataContext dataContext, Map<String, Object> rawData, ContainerInfo containerInfo) throws DataException {
+        ContainerTableRawDataGenerator containerTableDataGenerator = dataGeneratorFactory.containerTableRawDataGenerator(dataContext);
+        List<Map<String, Object>> tableData = containerTableDataGenerator.generate(dataContext);
+        List<SectionField> headers = containerTableDataGenerator.generateHeaders(dataContext, containerInfo);
+        ContainerData rawContainerData = new ContainerData();
+        rawContainerData.setContainerId(containerInfo.getId());
+        rawContainerData.setTableHeaders(headers);
+        rawContainerData.setRawTableData(tableData);
+        rawData.put(containerFieldInfo.getMappedColumnName().toUpperCase(), rawContainerData);
     }
 }
