@@ -1,30 +1,25 @@
 package com.github.salilvnair.ccf.config.hibernate;
 
+import lombok.RequiredArgsConstructor;
 import org.hibernate.boot.model.naming.Identifier;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import java.util.List;
 
-public class CcfPhysicalNamingStrategy implements PhysicalNamingStrategy, ApplicationContextAware {
+@RequiredArgsConstructor
+public class CcfPhysicalNamingStrategy implements PhysicalNamingStrategy {
 
-    private static List<PhysicalNamingStrategy> delegates;
+    private final List<PhysicalNamingStrategy> delegates;
 
-    @Override
-    public void setApplicationContext(ApplicationContext ctx) {
-        delegates = ctx.getBeansOfType(PhysicalNamingStrategy.class)
-                        .values()
-                        .stream()
-                        .filter(s -> !(s instanceof CcfPhysicalNamingStrategy))
-                        .toList();
-    }
 
     @Override
     public Identifier toPhysicalTableName(Identifier id, JdbcEnvironment env) {
         if (id == null) return null;
         for (PhysicalNamingStrategy strategy : delegates) {
-            id = strategy.toPhysicalTableName(id, env);
+            Identifier next = strategy.toPhysicalTableName(id, env);
+            if (!next.equals(id)) {
+                return next;
+            }
         }
         return id;
     }

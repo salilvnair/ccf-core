@@ -4,11 +4,14 @@ import com.github.salilvnair.ccf.config.CcfCoreEntityConfig;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.boot.model.naming.*;
 import org.hibernate.engine.jdbc.env.spi.JdbcEnvironment;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @RequiredArgsConstructor
+@Component
+@Primary
 public class CcfCorePhysicalNamingStrategy extends PhysicalNamingStrategySnakeCaseImpl implements PhysicalNamingStrategy {
 
     private final CcfCoreEntityConfig config;
