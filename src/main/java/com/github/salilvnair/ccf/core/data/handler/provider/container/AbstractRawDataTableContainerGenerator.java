@@ -90,11 +90,11 @@ public abstract class AbstractRawDataTableContainerGenerator extends AbstractCon
         countQueryString = resolvePlaceHolders(countQueryString, dataContext, new WhereQueryString());
         List<?> resultList = fetchResultList(dataContext, countQueryString);
         if(!CollectionUtils.isEmpty(resultList)) {
-            String classType = resultList.getFirst().getClass().getName();
+            String classType = resultList.get(0).getClass().getName();
             if(classType.equalsIgnoreCase("java.math.BigDecimal")) {
-                return ((BigDecimal)resultList.getFirst()).intValue();
+                return ((BigDecimal)resultList.get(0)).intValue();
             } else if(classType.equalsIgnoreCase("java.lang.Long")) {
-                return ((Long)resultList.getFirst()).intValue();
+                return ((Long)resultList.get(0)).intValue();
             }
         }
         return 0;
